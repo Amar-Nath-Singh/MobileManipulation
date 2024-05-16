@@ -186,16 +186,16 @@ if __name__ == '__main__':
     grid_size = 15
 
     configs = [
-        # lambda x,y: ((x + 2, y + 0, 0), (x + 0, y + 2, 90)),
-        # lambda x,y: ((x + 2, y + 0, 0), (x + 0, y - 2, -90)),
-        # lambda x,y: ((x - 2, y + 0, 0), (x + 0, y + 2, 90)),
-        # lambda x,y: ((x - 2, y + 0, 0), (x + 0, y - 2, -90)),
+        lambda x,y: ((x + 2, y + 0, 0), (x + 0, y + 2, 90)),
+        lambda x,y: ((x + 2, y + 0, 0), (x + 0, y - 2, -90)),
+        lambda x,y: ((x - 2, y + 0, 0), (x + 0, y + 2, 90)),
+        lambda x,y: ((x - 2, y + 0, 0), (x + 0, y - 2, -90)),
         lambda x,y: ((x + 2, y + 0, 90), (x - 2, y + 0, 90)),
         lambda x,y: ((x, y + 2, 0), (x, y - 2, 0)),        
         ]
 
     # Spawn N obstacles
-    for x in range(15):
+    for x in range(10):
         rnd = lambda : np.random.uniform(-grid_size, grid_size)
         x,y = rnd(), rnd()
 
@@ -208,13 +208,13 @@ if __name__ == '__main__':
 
 
     bot = Bot()
-    prm = PRM(environment, bot, n_points=1000)
-    k = 20
+    prm = PRM(environment, bot, n_points=500)
+    k = 10
     prm.build_roadmap(-grid_size, grid_size, k = k)
-    # prm.plot_roadmap()
-    # # for handle in environment.model_handles:
-    # #         environment.plot_object(handle, style='b--')
-    # plt.show()
+    prm.plot_roadmap()
+    for handle in environment.model_handles:
+            environment.plot_object(handle, style='b--')
+    plt.show()
 
     # while True: bot.moveArm(1.0)
 
@@ -225,12 +225,6 @@ if __name__ == '__main__':
         youbot_pose, youbot_pose_orientation = bot.getPoseState()
         dr12_pose, dr12_orientation = bot.getDR12State()
         g_dist = euclidean_distance(youbot_pose[:2] , dr12_pose[:2])
-        if g_dist < 0.7:
-            print('Planning Arm')
-            if bot.moveArm([dr12_pose[0], dr12_pose[1], 0.0]):
-                print('Catched!!')
-                time.sleep(1)
-                environment.pause_env()
 
         start = youbot_pose[:2]
         goal = dr12_pose[:2]
@@ -242,7 +236,6 @@ if __name__ == '__main__':
         goal_node = prm.find_path(**{'start':start, 'goal':goal})
         if goal_node is None:
             print('NO FOUND')
-            bot.setWeelState(0, 0, 0, 0)
             continue
 
         wp_idx_list = []
@@ -268,6 +261,10 @@ if __name__ == '__main__':
             if bot.moveToGoal(g_wp + [g_yaw]):
                 last_reached_wp = g_wp
 
+        if bot.moveArm([dr12_pose[0], dr12_pose[1], 0.0]):
+            print('Catched!!')
+            time.sleep(1)
+            environment.pause_env()
 
 plt.show()
 

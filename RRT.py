@@ -132,25 +132,25 @@ if __name__ == '__main__':
     plt.show()
 
 
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
+    # fig = plt.figure()
+    # ax = fig.add_subplot(111, projection='3d')
 
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
-    ax.set_zlabel('Z')
-    ax.set_title('3D Scatter Plot')
+    # ax.set_xlabel('X')
+    # ax.set_ylabel('Y')
+    # ax.set_zlabel('Z')
+    # ax.set_title('3D Scatter Plot')
 
-    path = []
-    temp = node
-    while temp:
-        path.append(temp.state)
-        temp = temp.parent
+    # path = []
+    # temp = node
+    # while temp:
+    #     path.append(temp.state)
+    #     temp = temp.parent
 
-    path = path[::-1]
+    # path = path[::-1]
 
-    for state in path:
-        pose = transform2(*state)[:3, -1]
-        ax.scatter(pose[0], pose[1], pose[2], c='b', marker='o')
-        plt.pause(0.1)
+    # for state in path:
+    #     pose = transform2(*state)[:3, -1]
+    #     ax.scatter(pose[0], pose[1], pose[2], c='b', marker='o')
+    #     plt.pause(0.1)
 
-    plt.show()
+    # plt.show()

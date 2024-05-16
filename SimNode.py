@@ -236,10 +236,13 @@ class Bot:
         postition, orientation = self.getPoseState()
         R = euler_to_rotation_matrix(*orientation)
         r_vec = np.array(goal) - np.array(postition)
-        baselink_goal = R.T @ r_vec
-        armbaselink_goal = r_vec - np.array([0.045, 0.0, 0.228])
-        
 
+        baselink_goal = R.T @ r_vec
+        armbaselink_goal = baselink_goal - np.array([0.045, 0.0, 0.228])
+
+        if np.linalg.norm(armbaselink_goal) > 0.4:
+            return False
+        
         print('Rel Goal', armbaselink_goal)
         node = self.rrt.search(1500, armState, armbaselink_goal)
         path = []
