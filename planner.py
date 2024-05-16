@@ -7,7 +7,7 @@ from sklearn.neighbors import KDTree
 from tqdm import tqdm
 
 from heapq import heapify, heappush, heappop 
-
+import random
 # Line ==> (x1,y1), (x2,y2)
 # BBox ==> (min_x, min_y, min_z, max_x, max_y, max_z)
 # Rectangle ==> (x, y, min_x, min_y, min_z, max_x, max_y, max_z, yaw)
@@ -181,15 +181,31 @@ class Node(object):
 if __name__ == '__main__':
     home_dir = os.path.expanduser("~")
     models_path = home_dir + '/CoppeliaSim_Edu_V4_6_0_rev18_Ubuntu22_04/models/'
-    obstacle_path = r'infrastructure/walls/240cm high walls/wall section 200cm.ttm'
+    obstacle_path = r'infrastructure/walls/240cm high walls/wall section 400cm.ttm'
     environment = Env(models_path)
     grid_size = 15
 
+    configs = [
+        # lambda x,y: ((x + 2, y + 0, 0), (x + 0, y + 2, 90)),
+        # lambda x,y: ((x + 2, y + 0, 0), (x + 0, y - 2, -90)),
+        # lambda x,y: ((x - 2, y + 0, 0), (x + 0, y + 2, 90)),
+        # lambda x,y: ((x - 2, y + 0, 0), (x + 0, y - 2, -90)),
+        lambda x,y: ((x + 2, y + 0, 90), (x - 2, y + 0, 90)),
+        lambda x,y: ((x, y + 2, 0), (x, y - 2, 0)),        
+        ]
+
     # Spawn N obstacles
-    for x in range(10):
+    for x in range(15):
         rnd = lambda : np.random.uniform(-grid_size, grid_size)
-        rnd_theta = lambda : np.random.uniform(-np.pi, np.pi)
-        environment.generate_object(obstacle_path, [rnd(), rnd(), 0], [0, 0, rnd_theta()], inflation = 0.6)
+        x,y = rnd(), rnd()
+
+        (x1,y1, th1), (x2,y2, th2) = random.choice(configs)(x,y)
+        th1 = np.radians(th1)
+        th2 = np.radians(th2)
+
+        environment.generate_object(obstacle_path, [x1, y1, 2.4/2], [0, 0, th1], inflation = 0.6)
+        environment.generate_object(obstacle_path, [x2, y2, 2.4/2], [0, 0, th2], inflation = 0.6)
+
 
     bot = Bot()
     prm = PRM(environment, bot, n_points=1000)
@@ -211,9 +227,10 @@ if __name__ == '__main__':
         g_dist = euclidean_distance(youbot_pose[:2] , dr12_pose[:2])
         if g_dist < 0.7:
             print('Planning Arm')
-            if bot.moveArm([dr12_pose[0], dr12_pose[1], 0.4]):
+            if bot.moveArm([dr12_pose[0], dr12_pose[1], 0.0]):
                 print('Catched!!')
-                # environment.pause_env()
+                time.sleep(1)
+                environment.pause_env()
 
         start = youbot_pose[:2]
         goal = dr12_pose[:2]
@@ -225,6 +242,7 @@ if __name__ == '__main__':
         goal_node = prm.find_path(**{'start':start, 'goal':goal})
         if goal_node is None:
             print('NO FOUND')
+            bot.setWeelState(0, 0, 0, 0)
             continue
 
         wp_idx_list = []
@@ -243,22 +261,13 @@ if __name__ == '__main__':
             if reached:
                 last_reached_wp = next_wp_idx
                 print('Reached!!')
+
         else:
-            # bot.lineFollow([prm.samples[next_wp_idx[0]], goal], youbot_pose, youbot_pose_orientation, 0.1)
-            # g_wp = prm.samples[next_wp_idx[0]]
             g_wp = goal
             g_yaw = np.arctan2(g_wp[1] - youbot_pose[1], g_wp[0] - youbot_pose[0])
             if bot.moveToGoal(g_wp + [g_yaw]):
                 last_reached_wp = g_wp
 
-        # x_values, y_values = zip(*wp_list)
-
-        # plt.plot(x_values, y_values, marker = 'o', linestyle='-')
-        # plt.scatter(x_wp, y_wp, c = colors, cmap='viridis')
-
-        # for handle in environment.model_handles:
-        #         environment.plot_object(handle, style='b--')
-        # plt.pause(0.01)
 
 plt.show()
 

@@ -5,6 +5,7 @@ from utils import *
 import sim
 import sys
 import modern_robotics as mr
+from RRT import RRT
 
 clientID = sim.simxStart('127.0.0.1',19997,True,True,5000,5)
 if(clientID!=-1):
@@ -102,45 +103,7 @@ class Bot:
             [0, 0, -0.3]], dtype=float
         )
 
-        # End-effector to base relative transform
-        self.M_0e = np.array([[1,0,0,0.033],
-                        [0,1,0,0],
-                        [0,0,1,0.6546],
-                        [0,0,0,1]])
-        
-        # B list for arm on th eyou-bot
-        self.Blist =  np.array([[0,0,1,0,0.0330,0],
-                        [0,-1,0,-0.5076,0,0],
-                        [0,-1,0,-0.3526,0,0],
-                        [0,-1,0,-0.2176,0,0],
-                        [0,0,1,0,0,0]]).T
-        
-        # offset from base to arm transform
-        self.T_b0 = np.array([[1,0,0,0.1662],
-                        [0,1,0,0],
-                        [0,0,1,0.0026],
-                        [0,0,0,1]])
-        
-        # Set Kp and Ki
-        self.kp = np.eye(6) * 1
-        self.ki = np.eye(6)* 0
-
-        self.ec = np.zeros(6)
-
-        # Constants from MR wiki
-        radius = 0.0475
-        l = 0.235 
-        w =  0.15
-
-        # init robot's H matrix
-        h = radius/4 * np.array([[-1/(l+w), 1/(l+w), 1/(l+w), -1/(l+w)],
-                        [1, 1, 1, 1],
-                        [-1, 1, -1, 1]]).T
-
-        h1 = np.array([[-1/(l+w), 1/(l+w), 1/(l+w), -1/(l+w)],
-                        [1, 1, 1, 1],
-                        [-1, 1, -1, 1]])
-        self.h1 = np.concatenate((np.zeros((2,4)),h1*radius/4, np.zeros((1,4))), axis=0)
+        self.rrt = RRT()
     
     def getArmState(self, ):
         
@@ -223,39 +186,6 @@ class Bot:
             qs_list.append(qs)
         return qs_list
     
-    # def moveArm(self, pose):
-    #     xg, yg, zg = pose
-    #     (x,y,z), (_, _, yaw) = self.getPoseState()
-
-    #     R = np.array([
-    #         [np.cos(yaw), np.sin(yaw), 0],
-    #         [-np.sin(yaw), np.cos(yaw), 0],
-    #         [0, 0, 1]
-    #     ])
-
-    #     vecR = np.array([xg-x, yg-y, zg])
-
-    #     vecG = np.dot(R, vecR)
-    #     vecG = vecG - np.array([0.11354, -0.12149, 0.04892])
-    #     vecG[0] = -vecG[0]
-    #     vecG[1] = -vecG[1]
-    #     solved = False
-    #     i = 0
-    #     l = []
-    #     print(vecG)
-    #     print('\n\n')
-    #     while not solved and i < 2000:
-    #         rand_vecG = vecG + np.random.uniform(-0.05, 0.05, vecG.shape)
-    #         l.append(rand_vecG)
-    #         qs, solves = self.ks.inverse(rand_vecG.tolist(), [0,0,0])
-    #         solved = solves[0] and solves[1]
-    #         i += 1
-    #     if solved:
-    #         print(f'{i} ARM Pose:',rand_vecG)
-    #         self.setArmState(qs[0])
-        
-    #     return solved
-    
     def lineFollow(self, line, position, orientaion, coa):
         (x_init,y_init), (x_goal,y_goal) = line
         x, y, z = position
@@ -301,80 +231,25 @@ class Bot:
     def exit(self,):
         sim.simxFinish(clientID)
 
-    # def getTrajectory(self, ):
-
-    #     err, (x, y, z) = sim.simxGetObjectPosition(clientID, self.roll_joint_Arm4, -1, sim.simx_opmode_oneshot_wait)
-    #     err, (roll, pitch, yaw) = sim.simxGetObjectPosition(clientID, self.roll_joint_Arm4, -1, sim.simx_opmode_oneshot_wait)
+    def moveArm(self, goal):
+        armState = self.getArmState()
+        postition, orientation = self.getPoseState()
+        R = euler_to_rotation_matrix(*orientation)
+        r_vec = np.array(goal) - np.array(postition)
+        baselink_goal = R.T @ r_vec
+        armbaselink_goal = r_vec - np.array([0.045, 0.0, 0.228])
         
-    #     T_se_initial = euler_to_rotation_matrix(roll, pitch, yaw).tolist()
-    #     T_se_initial.append([0, 0, 0, 1])
-    #     T_se_initial[0].append(x)
-    #     T_se_initial[1].append(y)
-    #     T_se_initial[2].append(z)
-    #     T_se_initial = np.array(T_se_initial)
-    #     (xf , yf, zf), (alpha, beta, gamma) = [0, 0, 0.25], [0, 0, 0]
 
+        print('Rel Goal', armbaselink_goal)
+        node = self.rrt.search(1500, armState, armbaselink_goal)
+        path = []
 
-        
-    #     T_se_standoff_s = np.dot(T_sc_initial, T_ce_standoff)
-    #     traj = mr.ScrewTrajectory(T_se_initial, T_se_standoff_s, 3, 500, 5)
+        while node:
+            path.append(node.state)
+            node = node.parent
+        path = path[::-1]
 
-    # def moveArm(self, dt):
-    #     joint_angles = np.array(self.getArmState())
-    #     err, (x, y, z) = sim.simxGetObjectPosition(clientID, self.roll_joint_Arm4, -1, sim.simx_opmode_oneshot_wait)
-    #     err, (roll, pitch, yaw) = sim.simxGetObjectPosition(clientID, self.roll_joint_Arm4, -1, sim.simx_opmode_oneshot_wait)
-    #     (xf , yf, zf), (alpha, beta, gamma) = [0, 0, 0.25], [0, 0, 0]
-    #     X_d = euler_to_rotation_matrix(alpha, beta, gamma).tolist()
-    #     X_d.append([0, 0, 0, 1])
-    #     X_d[0].append(xf)
-    #     X_d[1].append(yf)
-    #     X_d[2].append(zf)
+        for state in path:
+            self.setArmState(state)
 
-    #     T_sb = euler_to_rotation_matrix(roll, pitch, yaw).tolist()
-    #     T_sb.append([0, 0, 0, 1])
-    #     T_sb[0].append(x)
-    #     T_sb[1].append(y)
-    #     T_sb[2].append(z)
-
-    #     T_sb = np.array(T_sb)
-    #     X_d = X_dn = np.array(X_d)
-
-    #     # Compute Transforms T_0e offset arm to end effector, T_eb end-effector to base
-    #     T_0e = mr.FKinBody(self.M_0e, self.Blist, joint_angles)
-        
-    #     T_eb = np.matmul(np.linalg.inv(T_0e), np.linalg.inv(self.T_b0))
-
-    #     X = np.matmul(T_sb,T_be)
-
-
-    #     # Compute feed forward ref twise
-    #     X_inv = np.linalg.inv(X)
-    #     X_d_inv = np.linalg.inv(X_d)
-    #     X_dn_inv = np.linalg.inv(X_dn)
-    #     inp = np.matmul(X_d_inv, X_dn)/dt
-    #     Vd = mr.se3ToVec(mr.MatrixLog6(inp))
-
-    #     # Compute Ad x1 xd Vd
-    #     adj_x1 = mr.Adjoint(np.matmul(X_inv, X_d))
-    #     adj_vd = np.matmul(adj_x1, Vd)
-
-    #     # add error integral
-    #     x_error = mr.se3ToVec(mr.MatrixLog6(np.matmul(X_inv, X_d)))
-    #     self.ec = self.ec + x_error*dt
-    #     v_twist = adj_vd + np.matmul(self.kp, x_error) + np.matmul(self.ki, self.ec)
-        
-    #     # Calculate Jacobians
-    #     J_arm = mr.JacobianBody(self.Blist, joint_angles)
-    #     J_base = np.matmul(mr.Adjoint(T_eb), self.h1)
-    #     J_end = np.concatenate((J_base, J_arm), axis=1)
-    #     J_inv = np.linalg.pinv(J_end)
-
-    #     # Compute Wheel and arm control outputs
-    #     controls = np.matmul(J_inv, v_twist)
-
-    #     # Split control into individual variables
-    #     joint_control = controls[0:5]
-    #     wheel_control = controls[5:9]
-
-    #     self.setArmState(joint_control)
-    #     self.setWeelState(*wheel_control.tolist())
+        return len(path) > 0

@@ -120,3 +120,34 @@ def checkPointInsideRectangle(point, rectangle, deflate = 0.0):
         return True
     else:
         return False
+    
+def checkCollisionBetweenLines3d(line1, line2):
+    (x1, y1, z1), (x2, y2, z2) = line1
+    (x3, y3, z3), (x4, y4, z4) = line2
+    
+    # Direction vectors for each line
+    dir1 = [x2 - x1, y2 - y1, z2 - z1]
+    dir2 = [x4 - x3, y4 - y3, z4 - z3]
+    
+    # Cross product of direction vectors
+    cross = [
+        dir1[1] * dir2[2] - dir1[2] * dir2[1],
+        dir1[2] * dir2[0] - dir1[0] * dir2[2],
+        dir1[0] * dir2[1] - dir1[1] * dir2[0]
+    ]
+    
+    # If cross product is zero, lines are parallel
+    if cross == [0, 0, 0]:
+        return False
+    
+    # Parameters for line equations
+    t = ((x1 - x3) * cross[1] + (y1 - y3) * cross[2] + (z1 - z3) * cross[0]) / (dir2[0] * cross[1] + dir2[1] * cross[2] + dir2[2] * cross[0])
+    s = ((x3 - x1) * dir1[1] + (y3 - y1) * dir1[2] + (z3 - z1) * dir1[0]) / (cross[0] * dir1[1] + cross[1] * dir1[2] + cross[2] * dir1[0])
+    
+    # Check if intersection point lies within line segments
+    if 0 <= t <= 1 and 0 <= s <= 1:
+        # Intersection point
+        intersection_point = (x1 + t * dir1[0], y1 + t * dir1[1], z1 + t * dir1[2])
+        return True
+    else:
+        return False
