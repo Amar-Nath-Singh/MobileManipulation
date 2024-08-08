@@ -151,3 +151,17 @@ def checkCollisionBetweenLines3d(line1, line2):
         return True
     else:
         return False
+
+def check_obb_collision(center1, half_widths1, rotation_matrix1, 
+                        center2, half_widths2, rotation_matrix2):
+    """
+    Check collision between two 3D oriented bounding boxes (OBBs).
+    Returns:
+    bool: True if the OBBs intersect, False otherwise.
+    """
+    # Create OBB objects
+    obb1 = OBB(center1, half_widths1, rotation_matrix1)
+    obb2 = OBB(center2, half_widths2, rotation_matrix2)
+    
+    # Check for collision
+    return obb1.intersects(obb2)

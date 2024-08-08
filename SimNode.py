@@ -4,7 +4,6 @@ from utils import *
 
 import sim
 import sys
-import modern_robotics as mr
 from RRT import RRT
 
 clientID = sim.simxStart('127.0.0.1',19997,True,True,5000,5)
@@ -104,7 +103,8 @@ class Bot:
         )
 
         self.rrt = RRT()
-    
+
+        self.setWeelState(0, 0, 0 ,0)
     def getArmState(self, ):
         
         sols =  [
@@ -240,7 +240,7 @@ class Bot:
         baselink_goal = R.T @ r_vec
         armbaselink_goal = baselink_goal - np.array([0.045, 0.0, 0.228])
 
-        if np.linalg.norm(armbaselink_goal) > 0.4:
+        if np.linalg.norm(armbaselink_goal) > 0.7:
             return False
         
         print('Rel Goal', armbaselink_goal)

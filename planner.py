@@ -261,7 +261,7 @@ if __name__ == '__main__':
             if bot.moveToGoal(g_wp + [g_yaw]):
                 last_reached_wp = g_wp
 
-        if bot.moveArm([dr12_pose[0], dr12_pose[1], 0.0]):
+        if bot.moveArm([dr12_pose[0], dr12_pose[1], 0.20]):
             print('Catched!!')
             time.sleep(1)
             environment.pause_env()
